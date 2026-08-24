@@ -1,10 +1,14 @@
 import { useParams, Link } from "react-router-dom";
+import { useState } from "react";
 import Navbar from "../components/Navbar";
 import FreshnessTimeline from "../components/FreshnessTimeline";
 import mockProducts from "../data/mockProducts";
+import { useCart } from "../context/CartContext";
 
 export default function ProductDetail() {
   const { id } = useParams();
+  const [quantity, setQuantity] = useState(1);
+  const { addToCart } = useCart();
   const product = mockProducts.find((p) => p._id === id);
 
   if (!product) {
@@ -20,6 +24,10 @@ export default function ProductDetail() {
       </div>
     );
   }
+
+  const handleAddToCart = () => {
+    addToCart(product, quantity);
+  };
 
   return (
     <div>
@@ -45,7 +53,22 @@ export default function ProductDetail() {
             ⭐ {product.rating} ({product.reviewCount} reviews)
           </div>
 
-          <button className="mt-6 w-full bg-brand-green hover:bg-brand-accent transition text-white font-semibold py-3 rounded-full">
+          <div className="mt-5 flex items-center gap-3">
+            <label className="text-sm font-medium text-gray-700">Qty</label>
+            <input
+              type="number"
+              min="1"
+              max="10"
+              value={quantity}
+              onChange={(e) => setQuantity(Math.max(1, Number(e.target.value) || 1))}
+              className="w-20 border border-gray-300 rounded-lg px-2 py-2 text-center"
+            />
+          </div>
+
+          <button
+            onClick={handleAddToCart}
+            className="mt-6 w-full bg-brand-green hover:bg-brand-accent transition text-white font-semibold py-3 rounded-full"
+          >
             Add to Cart
           </button>
 

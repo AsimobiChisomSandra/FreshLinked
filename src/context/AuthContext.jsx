@@ -3,6 +3,14 @@ import { getCurrentUser } from "../services/api";
 
 const AuthContext = createContext();
 
+const readUser = (apiResponse) => {
+  const payload = apiResponse?.data ?? apiResponse ?? {};
+  const candidate = payload.user ?? payload ?? apiResponse ?? {};
+  return candidate && typeof candidate === "object" && (candidate._id || candidate.id || candidate.email)
+    ? candidate
+    : null;
+};
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -15,19 +23,28 @@ export function AuthProvider({ children }) {
     }
 
     getCurrentUser()
-      .then((res) => setUser(res.data.user || res.data))
+      .then((res) => {
+        const authUser = readUser(res);
+        setUser(authUser);
+        if (!authUser) localStorage.removeItem("freshlink_token");
+      })
       .catch(() => {
         localStorage.removeItem("freshlink_token");
+        setUser(null);
       })
       .finally(() => setLoading(false));
   }, []);
 
   const login = (apiResponse) => {
-    // Accept either { token, user } or { token, user: { ... } }
-    const token = apiResponse?.token || apiResponse?.data?.token;
-    const userObj = apiResponse?.user || apiResponse?.data?.user || apiResponse?.data || apiResponse;
-    if (token) localStorage.setItem("freshlink_token", token);
-    setUser(userObj.user ? userObj.user : userObj);
+    const payload = apiResponse?.data ?? apiResponse ?? {};
+    const token = payload?.token ?? apiResponse?.token;
+    const authUser = readUser(payload) ?? readUser(apiResponse);
+
+    if (token) {
+      localStorage.setItem("freshlink_token", token);
+    }
+
+    setUser(authUser);
   };
 
   const logout = () => {

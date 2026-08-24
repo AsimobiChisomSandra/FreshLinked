@@ -1,14 +1,14 @@
 import axios from "axios";
 
-// Update this if your backend runs on a different port or is deployed
-const API_BASE_URL =
-  import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
 const api = axios.create({
   baseURL: API_BASE_URL,
+  headers: {
+    "Content-Type": "application/json",
+  },
 });
 
-// Attach the JWT token automatically to every request, if one exists
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("freshlink_token");
   if (token) {
@@ -19,6 +19,8 @@ api.interceptors.request.use((config) => {
 
 export const registerUser = (data) => api.post("/auth/register", data);
 export const loginUser = (data) => api.post("/auth/login", data);
+export const forgotPassword = (data) => api.post("/auth/forgot-password", data);
+export const resetPassword = (data) => api.post("/auth/reset-password", data);
 export const getCurrentUser = () => api.get("/auth/me");
 
 export default api;

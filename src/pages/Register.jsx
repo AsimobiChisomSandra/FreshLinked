@@ -36,12 +36,7 @@ export default function Register() {
       const res = await registerUser(formData);
       const { token, user } = res.data;
       login({ token, user });
-      const role = user?.role;
-      if (role === "seller" || role === "farmer") {
-        navigate("/seller-dashboard");
-      } else {
-        navigate("/marketplace");
-      }
+      navigate("/marketplace");
     } catch (err) {
       console.error("Registration error:", err);
       if (err.response) {
