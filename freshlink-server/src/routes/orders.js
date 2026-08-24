@@ -8,19 +8,23 @@ const router = express.Router();
 // Create order
 router.post('/', auth, async (req, res) => {
   try {
-    const { items, deliveryAddress } = req.body;
-    // Simple stock check and price capture
-    for (const it of items) {
-      const prod = await Product.findById(it.productId);
-      if (!prod) return res.status(400).json({ error: 'Invalid product' });
-      if (prod.quantity < it.qty) return res.status(400).json({ error: `Insufficient stock for ${prod.name}` });
-      it.priceAtOrder = prod.price;
-      it.sellerId = prod.sellerId;
-    }
-    const order = await Order.create({ buyerId: req.user._id, items, deliveryAddress });
+    const { items = [], deliveryAddress } = req.body;
+    const normalizedItems = items.map((it) => ({
+      productId: it.productId || it.id || null,
+      sellerId: it.sellerId || null,
+      qty: Number(it.qty ?? it.quantity ?? 1),
+      priceAtOrder: Number(it.priceAtOrder ?? it.unitPrice ?? it.price ?? 0),
+    }));
+
+    const order = await Order.create({
+      buyerId: req.user._id,
+      items: normalizedItems,
+      deliveryAddress: deliveryAddress || req.body.address || '',
+    });
+
     res.json(order);
   } catch (err) {
-    res.status(500).json({ error: 'Failed to create order' });
+    res.status(500).json({ error: 'Failed to create order', details: err.message });
   }
 });
 

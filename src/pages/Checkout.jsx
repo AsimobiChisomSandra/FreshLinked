@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
+import { createOrder } from "../services/api";
 
 export default function Checkout() {
   const navigate = useNavigate();
@@ -47,18 +48,14 @@ export default function Checkout() {
         deliveryMethod: form.deliveryMethod,
         pickupLocation: form.pickupLocation,
         contactPhone: form.phone,
-        deliveryAddress: form.address,
+        deliveryAddress: form.deliveryMethod === "pickup" ? form.pickupLocation : form.address,
       };
 
-      await new Promise((resolve) => setTimeout(resolve, 700));
-
-      const mockOrder = {
-        id: `FL-${Date.now()}`,
-        ...orderPayload,
-      };
+      const response = await createOrder(orderPayload);
+      const orderId = response?.data?._id || response?.data?.id || `FL-${Date.now()}`;
 
       clearCart();
-      navigate(`/order-confirmation/${mockOrder.id}`);
+      navigate(`/order-confirmation/${orderId}`);
     } catch {
       setError("Unable to complete your order right now. Please check your connection and try again.");
     } finally {

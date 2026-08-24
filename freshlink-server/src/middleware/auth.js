@@ -2,6 +2,8 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const { findUserById, buildUserResponse } = require('../config/inMemoryStore');
 
+const normalizeRole = (role) => String(role || '').trim().toLowerCase();
+
 const auth = async (req, res, next) => {
   const authHeader = req.headers.authorization;
   if (!authHeader) return res.status(401).json({ error: 'Missing authorization' });
@@ -23,6 +25,7 @@ const auth = async (req, res, next) => {
       ...user,
       ...(user._id ? {} : { _id: user.id }),
       ...(user.passwordHash ? {} : { passwordHash: user.password || null }),
+      role: normalizeRole(user.role === 'seller' ? 'farmer' : user.role),
     };
     next();
   } catch (err) {
@@ -30,9 +33,11 @@ const auth = async (req, res, next) => {
   }
 };
 
-const requireRole = (role) => (req, res, next) => {
+const requireRole = (...roles) => (req, res, next) => {
   if (!req.user) return res.status(401).json({ error: 'Not authenticated' });
-  if (req.user.role !== role && req.user.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+  const allowedRoles = roles.map(normalizeRole);
+  const userRole = normalizeRole(req.user.role);
+  if (!allowedRoles.includes(userRole) && req.user.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
   next();
 };
 

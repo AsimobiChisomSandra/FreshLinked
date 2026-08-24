@@ -5,6 +5,7 @@ import { useCart } from "../context/CartContext";
 export default function Navbar() {
   const { user, logout } = useAuth();
   const { itemCount } = useCart();
+  const isFarmer = user?.role === "farmer" || user?.role === "seller";
 
   return (
     <nav className="bg-brand-dark text-white px-6 py-4 flex items-center justify-between sticky top-0 z-50">
@@ -13,9 +14,19 @@ export default function Navbar() {
       </Link>
 
       <div className="hidden md:flex gap-8 text-sm font-medium items-center">
-        <Link to="/" className="hover:text-brand-accent transition">Home</Link>
-        <Link to="/marketplace" className="hover:text-brand-accent transition">Marketplace</Link>
-        <Link to="/cart" className="hover:text-brand-accent transition">Cart ({itemCount})</Link>
+        {isFarmer ? (
+          <>
+            <Link to="/farmer-dashboard" className="hover:text-brand-accent transition">Dashboard</Link>
+            <Link to="/farmer/add-produce" className="hover:text-brand-accent transition">Add Produce</Link>
+            <Link to="/farmer-dashboard" className="hover:text-brand-accent transition">Orders</Link>
+          </>
+        ) : (
+          <>
+            <Link to="/" className="hover:text-brand-accent transition">Home</Link>
+            <Link to="/marketplace" className="hover:text-brand-accent transition">Marketplace</Link>
+            <Link to="/cart" className="hover:text-brand-accent transition">Cart ({itemCount})</Link>
+          </>
+        )}
       </div>
 
       <div className="flex items-center gap-3">

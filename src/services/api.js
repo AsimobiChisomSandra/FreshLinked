@@ -22,5 +22,8 @@ export const loginUser = (data) => api.post("/auth/login", data);
 export const forgotPassword = (data) => api.post("/auth/forgot-password", data);
 export const resetPassword = (data) => api.post("/auth/reset-password", data);
 export const getCurrentUser = () => api.get("/auth/me");
+export const createOrder = (data) => api.post("/orders", data);
+export const createProduct = (data) => api.post("/products", data);
+export const getMyProducts = () => api.get("/products/mine");
 
 export default api;

@@ -26,7 +26,9 @@ export default function Login() {
       const res = await loginUser(formData);
       const { token, user } = res.data;
       login({ token, user });
-      navigate("/marketplace");
+      const redirectTarget = new URLSearchParams(location.search).get("redirect");
+      const destination = user?.role === "farmer" || user?.role === "seller" ? "/farmer-dashboard" : "/marketplace";
+      navigate(redirectTarget ? decodeURIComponent(redirectTarget) : destination, { replace: true });
     } catch (err) {
       console.error("Login error:", err);
       if (err.response) {

@@ -4,14 +4,28 @@ const { auth, requireRole } = require('../middleware/auth');
 
 const router = express.Router();
 
-// Create product (seller only)
-router.post('/', auth, requireRole('seller'), async (req, res) => {
+// Create product (farmer seller only)
+router.post('/', auth, requireRole('farmer'), async (req, res) => {
   try {
-    const data = { ...req.body, sellerId: req.user._id };
+    const data = {
+      ...req.body,
+      sellerId: req.user._id,
+      imageUrl: req.body.imageUrl || req.body.images?.[0] || '',
+      noRipeningAgentPledge: Boolean(req.body.noRipeningAgentPledge),
+    };
     const p = await Product.create(data);
-    res.json(p);
+    res.status(201).json(p);
   } catch (err) {
     res.status(500).json({ error: 'Failed to create product' });
+  }
+});
+
+router.get('/mine', auth, requireRole('farmer'), async (req, res) => {
+  try {
+    const products = await Product.find({ sellerId: req.user._id }).sort({ createdAt: -1 });
+    res.json(products);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch your products' });
   }
 });
 

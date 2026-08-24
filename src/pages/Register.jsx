@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import { registerUser } from "../services/api";
 import { useAuth } from "../context/AuthContext";
@@ -22,6 +22,7 @@ export default function Register() {
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -36,7 +37,9 @@ export default function Register() {
       const res = await registerUser(formData);
       const { token, user } = res.data;
       login({ token, user });
-      navigate("/marketplace");
+      const redirectTarget = new URLSearchParams(location.search).get("redirect");
+      const destination = user?.role === "farmer" || user?.role === "seller" ? "/farmer-dashboard" : "/marketplace";
+      navigate(redirectTarget ? decodeURIComponent(redirectTarget) : destination, { replace: true });
     } catch (err) {
       console.error("Registration error:", err);
       if (err.response) {
