@@ -19,7 +19,8 @@ async function connectDB() {
       return false;
     }
 
-    console.warn('Primary MongoDB connection failed. Retrying with local fallback on 127.0.0.1:27017');
+    console.warn('Primary MongoDB connection failed:', error.message);
+    console.warn('Retrying with local fallback on 127.0.0.1:27017');
     try {
       await mongoose.connect(fallbackUri, connectOptions);
       console.log(`MongoDB connected via local fallback: ${fallbackUri}`);

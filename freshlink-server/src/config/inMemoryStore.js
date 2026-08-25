@@ -7,8 +7,8 @@ const memoryOrders = [];
 const normalizeEmail = (email) => String(email || '').trim().toLowerCase();
 
 const buildUserResponse = (user) => ({
-  id: user._id,
-  _id: user._id,
+  id: String(user._id),
+  _id: String(user._id),
   name: user.name,
   email: user.email,
   role: user.role,

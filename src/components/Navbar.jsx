@@ -25,6 +25,7 @@ export default function Navbar() {
             <Link to="/" className="hover:text-brand-accent transition">Home</Link>
             <Link to="/marketplace" className="hover:text-brand-accent transition">Marketplace</Link>
             <Link to="/cart" className="hover:text-brand-accent transition">Cart ({itemCount})</Link>
+            <Link to="/orders" className="hover:text-brand-accent transition">My Orders</Link>
           </>
         )}
       </div>

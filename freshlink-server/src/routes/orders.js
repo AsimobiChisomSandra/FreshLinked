@@ -11,13 +11,14 @@ const router = express.Router();
 // Create order
 router.post('/', auth, async (req, res) => {
   try {
-    const { items = [], deliveryAddress } = req.body;
+    const { items = [], deliveryAddress, paymentStatus: incomingPaymentStatus, fulfillmentMethod, pickupLocation } = req.body;
 
     const normalizedItems = [];
     for (const it of items) {
       const productId = it.productId || it.id || null;
       let sellerId = it.sellerId || null;
       let priceAtOrder = Number(it.priceAtOrder ?? it.unitPrice ?? it.price ?? 0);
+      let productName = it.productName || it.name || '';
 
       if (productId) {
         try {
@@ -25,12 +26,14 @@ router.post('/', auth, async (req, res) => {
           if (prod) {
             sellerId = prod.sellerId || sellerId;
             priceAtOrder = prod.price || priceAtOrder;
+            productName = prod.name || productName;
           } else {
             // not in DB, try in-memory products
             const mem = memoryProducts.find((p) => String(p._id) === String(productId));
             if (mem) {
               sellerId = mem.sellerId || sellerId;
               priceAtOrder = mem.price || priceAtOrder;
+              productName = mem.name || productName;
             }
           }
         } catch (e) {
@@ -47,18 +50,38 @@ router.post('/', auth, async (req, res) => {
         }
       }
 
-      normalizedItems.push({ productId, sellerId, qty: Number(it.qty ?? it.quantity ?? 1), priceAtOrder });
+      normalizedItems.push({ productId, productName, sellerId, qty: Number(it.qty ?? it.quantity ?? 1), priceAtOrder });
     }
+    // compute totals and reference
+    const subtotal = normalizedItems.reduce((s, it) => s + (Number(it.priceAtOrder || 0) * Number(it.qty || 1)), 0);
+    const totalAmount = subtotal; // extend for fees if needed
+    const reference = `FL-${new Date().getFullYear()}-${Date.now().toString().slice(-6)}`;
 
     try {
-      const order = await Order.create({ buyerId: req.user._id, items: normalizedItems, deliveryAddress: deliveryAddress || req.body.address || '' });
+      const order = await Order.create({
+        reference,
+        buyerId: req.user._id,
+        items: normalizedItems,
+        subtotal,
+        totalAmount,
+        paymentStatus: incomingPaymentStatus || 'paid',
+        fulfillmentMethod: fulfillmentMethod || 'pickup',
+        pickupLocation: pickupLocation || null,
+        deliveryAddress: deliveryAddress || req.body.address || '',
+      });
       return res.json(order);
     } catch (dbErr) {
       console.error('DB order create failed, falling back to memory:', dbErr && dbErr.message);
       const fallback = {
         _id: crypto.randomUUID(),
+        reference,
         buyerId: req.user._id,
         items: normalizedItems,
+        subtotal,
+        totalAmount,
+        paymentStatus: incomingPaymentStatus || 'paid',
+        fulfillmentMethod: fulfillmentMethod || 'pickup',
+        pickupLocation: pickupLocation || null,
         deliveryAddress: deliveryAddress || req.body.address || '',
         status: 'pending',
         createdAt: new Date().toISOString(),

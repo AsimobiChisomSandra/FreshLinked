@@ -12,6 +12,8 @@ import ResetPassword from "./pages/ResetPassword";
 import FarmerDashboard from "./pages/FarmerDashboard";
 import AddProduce from "./pages/AddProduce";
 import FarmerOrders from "./pages/FarmerOrders";
+import MyOrders from "./pages/MyOrders";
+import OrderDetails from "./pages/OrderDetails";
 import OrderConfirmation from "./pages/OrderConfirmation";
 
 function ProtectedRoute({ children }) {
@@ -68,6 +70,22 @@ function App() {
           element={
             <ProtectedRoute>
               <FarmerOrders />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/orders"
+          element={
+            <ProtectedRoute>
+              <MyOrders />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/orders/:id"
+          element={
+            <ProtectedRoute>
+              <OrderDetails />
             </ProtectedRoute>
           }
         />

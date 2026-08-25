@@ -34,7 +34,8 @@ export default function Register() {
     setLoading(true);
 
     try {
-      const res = await registerUser(formData);
+      const payload = { ...formData, email: String(formData.email || '').trim().toLowerCase() };
+      const res = await registerUser(payload);
       const { token, user } = res.data;
       login({ token, user });
       const redirectTarget = new URLSearchParams(location.search).get("redirect");
