@@ -1,6 +1,8 @@
 const crypto = require('crypto');
 
 const memoryUsers = [];
+const memoryProducts = [];
+const memoryOrders = [];
 
 const normalizeEmail = (email) => String(email || '').trim().toLowerCase();
 
@@ -68,4 +70,6 @@ module.exports = {
   updateUserPasswordByEmail,
   buildUserResponse,
   memoryUsers,
+  memoryProducts,
+  memoryOrders,
 };

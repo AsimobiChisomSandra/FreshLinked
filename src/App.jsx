@@ -11,6 +11,7 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import FarmerDashboard from "./pages/FarmerDashboard";
 import AddProduce from "./pages/AddProduce";
+import FarmerOrders from "./pages/FarmerOrders";
 import OrderConfirmation from "./pages/OrderConfirmation";
 
 function ProtectedRoute({ children }) {
@@ -59,6 +60,14 @@ function App() {
           element={
             <ProtectedRoute>
               <FarmerDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/farmer/orders"
+          element={
+            <ProtectedRoute>
+              <FarmerOrders />
             </ProtectedRoute>
           }
         />

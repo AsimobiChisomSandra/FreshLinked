@@ -2,6 +2,9 @@ const express = require('express');
 const Order = require('../models/Order');
 const Product = require('../models/Product');
 const { auth } = require('../middleware/auth');
+const { memoryOrders, memoryProducts } = require('../config/inMemoryStore');
+const crypto = require('crypto');
+const mongoose = require('mongoose');
 
 const router = express.Router();
 
@@ -9,21 +12,63 @@ const router = express.Router();
 router.post('/', auth, async (req, res) => {
   try {
     const { items = [], deliveryAddress } = req.body;
-    const normalizedItems = items.map((it) => ({
-      productId: it.productId || it.id || null,
-      sellerId: it.sellerId || null,
-      qty: Number(it.qty ?? it.quantity ?? 1),
-      priceAtOrder: Number(it.priceAtOrder ?? it.unitPrice ?? it.price ?? 0),
-    }));
 
-    const order = await Order.create({
-      buyerId: req.user._id,
-      items: normalizedItems,
-      deliveryAddress: deliveryAddress || req.body.address || '',
-    });
+    const normalizedItems = [];
+    for (const it of items) {
+      const productId = it.productId || it.id || null;
+      let sellerId = it.sellerId || null;
+      let priceAtOrder = Number(it.priceAtOrder ?? it.unitPrice ?? it.price ?? 0);
 
-    res.json(order);
+      if (productId) {
+        try {
+          const prod = await Product.findById(productId);
+          if (prod) {
+            sellerId = prod.sellerId || sellerId;
+            priceAtOrder = prod.price || priceAtOrder;
+          } else {
+            // not in DB, try in-memory products
+            const mem = memoryProducts.find((p) => String(p._id) === String(productId));
+            if (mem) {
+              sellerId = mem.sellerId || sellerId;
+              priceAtOrder = mem.price || priceAtOrder;
+            }
+          }
+        } catch (e) {
+          // If DB lookup throws, try in-memory products as fallback
+          try {
+            const mem = memoryProducts.find((p) => String(p._id) === String(productId));
+            if (mem) {
+              sellerId = mem.sellerId || sellerId;
+              priceAtOrder = mem.price || priceAtOrder;
+            }
+          } catch (ee) {
+            // ignore
+          }
+        }
+      }
+
+      normalizedItems.push({ productId, sellerId, qty: Number(it.qty ?? it.quantity ?? 1), priceAtOrder });
+    }
+
+    try {
+      const order = await Order.create({ buyerId: req.user._id, items: normalizedItems, deliveryAddress: deliveryAddress || req.body.address || '' });
+      return res.json(order);
+    } catch (dbErr) {
+      console.error('DB order create failed, falling back to memory:', dbErr && dbErr.message);
+      const fallback = {
+        _id: crypto.randomUUID(),
+        buyerId: req.user._id,
+        items: normalizedItems,
+        deliveryAddress: deliveryAddress || req.body.address || '',
+        status: 'pending',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      memoryOrders.push(fallback);
+      return res.json(fallback);
+    }
   } catch (err) {
+    console.error('Order create error:', err);
     res.status(500).json({ error: 'Failed to create order', details: err.message });
   }
 });
@@ -31,12 +76,25 @@ router.post('/', auth, async (req, res) => {
 // Get orders for user (buyer or seller) or single order
 router.get('/', auth, async (req, res) => {
   try {
-    if (req.user.role === 'seller') {
-      const orders = await Order.find({ 'items.sellerId': req.user._id }).populate('buyerId', 'name email');
-      return res.json(orders);
+    const userRole = String(req.user.role || '').toLowerCase();
+    if (['seller', 'farmer'].includes(userRole)) {
+      let orders = [];
+      try {
+        orders = await Order.find({ 'items.sellerId': req.user._id }).populate('buyerId', 'name email');
+      } catch (dbErr) {
+        orders = [];
+      }
+      const mem = memoryOrders.filter((o) => o.items.some((it) => String(it.sellerId) === String(req.user._id)));
+      return res.json([...mem, ...orders]);
     }
-    const orders = await Order.find({ buyerId: req.user._id }).populate('items.productId');
-    res.json(orders);
+    let orders = [];
+    try {
+      orders = await Order.find({ buyerId: req.user._id }).populate('items.productId');
+    } catch (dbErr) {
+      orders = [];
+    }
+    const mem = memoryOrders.filter((o) => String(o.buyerId) === String(req.user._id));
+    res.json([...mem, ...orders]);
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch orders' });
   }
@@ -44,8 +102,16 @@ router.get('/', auth, async (req, res) => {
 
 router.get('/:id', auth, async (req, res) => {
   try {
-    const o = await Order.findById(req.params.id).populate('items.productId buyerId');
-    if (!o) return res.status(404).json({ error: 'Not found' });
+    let o = null;
+    try {
+      o = await Order.findById(req.params.id).populate('items.productId buyerId');
+    } catch (dbErr) {
+      o = null;
+    }
+    if (!o) {
+      o = memoryOrders.find((x) => String(x._id) === String(req.params.id));
+      if (!o) return res.status(404).json({ error: 'Not found' });
+    }
     // authorization: buyer, seller (involved), or admin
     const isBuyer = String(o.buyerId._id) === String(req.user._id);
     const isSellerInvolved = o.items.some((it) => String(it.sellerId) === String(req.user._id));
@@ -60,8 +126,18 @@ router.get('/:id', auth, async (req, res) => {
 router.put('/:id/status', auth, async (req, res) => {
   try {
     const { status } = req.body;
-    const o = await Order.findById(req.params.id);
-    if (!o) return res.status(404).json({ error: 'Not found' });
+    let o = null;
+    try {
+      o = await Order.findById(req.params.id);
+    } catch (dbErr) {
+      o = null;
+    }
+    if (!o) {
+      const memIdx = memoryOrders.findIndex((x) => String(x._id) === String(req.params.id));
+      if (memIdx === -1) return res.status(404).json({ error: 'Not found' });
+      memoryOrders[memIdx].status = status;
+      return res.json(memoryOrders[memIdx]);
+    }
     // ensure seller is part of the order
     const isSellerInvolved = o.items.some((it) => String(it.sellerId) === String(req.user._id));
     if (!isSellerInvolved && req.user.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });

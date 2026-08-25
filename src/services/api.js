@@ -25,5 +25,7 @@ export const getCurrentUser = () => api.get("/auth/me");
 export const createOrder = (data) => api.post("/orders", data);
 export const createProduct = (data) => api.post("/products", data);
 export const getMyProducts = () => api.get("/products/mine");
+export const getOrders = () => api.get("/orders");
+export const updateOrderStatus = (orderId, status) => api.put(`/orders/${orderId}/status`, { status });
 
 export default api;
